@@ -1,0 +1,62 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="Notify Manager on Privileged Grant" type="AfterProvisioning">
+  <Description>
+    Emails an identity's manager when a provisioning request against this
+    application commits successfully. Requires an EmailTemplate named
+    "Privileged Grant Notification" to already exist in IdentityIQ.
+
+    result.isCommitted() is the guard that matters most: After Provisioning
+    only fires when the ProvisioningResult is Committed or Queued, but a
+    Queued result is not yet confirmed by the target system, so this rule
+    still checks isCommitted() explicitly rather than trusting "the rule ran
+    at all" as proof of success.
+  </Description>
+  <Signature returnType="void">
+    <Inputs>
+      <Argument name="log" type="org.apache.log4j.Logger"/>
+      <Argument name="context" type="sailpoint.api.SailPointContext"/>
+      <Argument name="plan" type="sailpoint.object.ProvisioningPlan"/>
+      <Argument name="application" type="sailpoint.object.Application"/>
+      <Argument name="result" type="sailpoint.object.ProvisioningResult"/>
+    </Inputs>
+  </Signature>
+  <Source><![CDATA[
+    import sailpoint.object.Identity;
+    import sailpoint.object.EmailTemplate;
+    import sailpoint.object.EmailOptions;
+    import java.util.HashMap;
+
+    if (result == null || !result.isCommitted()) {
+        return;
+    }
+
+    String identityName = plan.getIdentity();
+    if (identityName == null) {
+        return;
+    }
+
+    Identity identity = context.getObjectByName(Identity.class, identityName);
+    if (identity == null) {
+        return;
+    }
+
+    Identity manager = identity.getManager();
+    if (manager == null || manager.getEmail() == null) {
+        return;
+    }
+
+    EmailTemplate template = context.getObjectByName(EmailTemplate.class, "Privileged Grant Notification");
+    if (template == null) {
+        log.warn("Privileged Grant Notification email template not found");
+        return;
+    }
+
+    HashMap vars = new HashMap();
+    vars.put("identityName", identity.getDisplayableName());
+    vars.put("applicationName", application.getName());
+
+    EmailOptions options = new EmailOptions(manager.getEmail(), vars);
+    context.sendEmailNotification(template, options);
+  ]]></Source>
+</Rule>

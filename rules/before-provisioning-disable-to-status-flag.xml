@@ -1,0 +1,46 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="Convert Disable to Status Flag" type="BeforeProvisioning">
+  <Description>
+    Some target systems have no native disable operation. Convert Disable/Enable
+    account requests into a Modify that sets an ACCOUNT_STATUS attribute instead,
+    so provisioning does not fail with an UnsupportedOperationException.
+
+    Attach this rule on the Rules tab of the Edit Application page for any
+    application whose connector needs this translation. It does not run
+    automatically for every application.
+  </Description>
+  <Signature returnType="void">
+    <Inputs>
+      <Argument name="log" type="org.apache.log4j.Logger"/>
+      <Argument name="context" type="sailpoint.api.SailPointContext"/>
+      <Argument name="plan" type="sailpoint.object.ProvisioningPlan"/>
+      <Argument name="application" type="sailpoint.object.Application"/>
+    </Inputs>
+  </Signature>
+  <Source><![CDATA[
+    import sailpoint.object.ProvisioningPlan;
+    import sailpoint.object.ProvisioningPlan.AccountRequest;
+    import sailpoint.object.ProvisioningPlan.AttributeRequest;
+    import sailpoint.object.ProvisioningPlan.ObjectOperation;
+    import java.util.List;
+
+    List requests = plan.getAccountRequests();
+    if (requests == null) {
+        return;
+    }
+
+    for (int i = 0; i < requests.size(); i++) {
+        AccountRequest req = (AccountRequest) requests.get(i);
+
+        if (req.getOp() == ObjectOperation.Disable) {
+            log.debug("Converting Disable to status-flag Modify for " + req.getNativeIdentity());
+            req.setOp(ObjectOperation.Modify);
+            req.add(new AttributeRequest("ACCOUNT_STATUS", ProvisioningPlan.Operation.Set, "0"));
+        } else if (req.getOp() == ObjectOperation.Enable) {
+            req.setOp(ObjectOperation.Modify);
+            req.add(new AttributeRequest("ACCOUNT_STATUS", ProvisioningPlan.Operation.Set, "1"));
+        }
+    }
+  ]]></Source>
+</Rule>

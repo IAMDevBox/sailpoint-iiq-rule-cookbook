@@ -1,0 +1,68 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="Exclude Disabled Accounts and Role-Justified Entitlements" type="CertificationExclusion">
+  <Description>
+    Removes certifiable items for accounts that are currently disabled, and
+    entitlements that are already granted indirectly through an assigned role
+    (they get reviewed as part of the role certification instead).
+
+    Configure on Certifications > Certification Schedule > Advanced Settings.
+    The rule contract is subtractive: return the items to REMOVE, never the
+    full surviving list. Returning null or an empty list excludes nothing.
+  </Description>
+  <Signature returnType="java.util.List">
+    <Inputs>
+      <Argument name="context" type="sailpoint.api.SailPointContext"/>
+      <Argument name="identity" type="sailpoint.object.Identity"/>
+      <Argument name="certifiableEntities" type="java.util.List"/>
+    </Inputs>
+  </Signature>
+  <Source><![CDATA[
+    import sailpoint.object.AbstractCertifiableEntity;
+    import sailpoint.object.Certifiable;
+    import sailpoint.object.EntitlementCertifiable;
+    import sailpoint.object.EntitlementSnapshot;
+    import java.util.ArrayList;
+    import java.util.List;
+
+    List excluded = new ArrayList();
+
+    if (certifiableEntities == null) {
+        return excluded;
+    }
+
+    for (int i = 0; i < certifiableEntities.size(); i++) {
+        Object entry = certifiableEntities.get(i);
+
+        // Only EntitlementCertifiable items carry role/link detail we can inspect;
+        // other Certifiable subtypes (e.g. BundleCertifiable) pass through untouched.
+        if (!(entry instanceof EntitlementCertifiable)) {
+            continue;
+        }
+
+        EntitlementCertifiable ec = (EntitlementCertifiable) entry;
+        EntitlementSnapshot snap = ec.getEntitlements();
+
+        if (snap == null) {
+            continue;
+        }
+
+        // Skip entitlements already covered by an assigned business role —
+        // they get reviewed once, at the role level, not once per entitlement.
+        if (snap.getApplication() != null && identity.getAssignedRoles() != null) {
+            boolean coveredByRole = false;
+            for (int r = 0; r < identity.getAssignedRoles().size(); r++) {
+                if (identity.getAssignedRoles().get(r).getName().equals(snap.getSourceRole())) {
+                    coveredByRole = true;
+                    break;
+                }
+            }
+            if (coveredByRole) {
+                excluded.add(entry);
+            }
+        }
+    }
+
+    return excluded;
+  ]]></Source>
+</Rule>
