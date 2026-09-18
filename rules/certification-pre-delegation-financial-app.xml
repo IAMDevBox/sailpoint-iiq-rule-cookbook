@@ -1,0 +1,46 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="Delegate Financial App Entitlements to AppSec" type="CertificationPreDelegation">
+  <Description>
+    Routes certifiable entitlements on a designated high-risk application to a
+    dedicated application-security reviewer instead of the identity's default
+    certifier (typically their manager), regardless of certification type or
+    trigger (scheduled recurrence or Certification Event).
+
+    Configure on Certifications > Certification Schedule > Advanced Settings,
+    the same place as an Exclusion Rule. Returning null leaves the certifier
+    assignment untouched for that item, so the rule only overrides the
+    specific entitlements it matches and is safe to attach broadly.
+
+    Validate with a Staged run before attaching to a live recurring or
+    event-driven campaign -- a typo in the returned identity name fails
+    silently (the item keeps its default certifier) with no error in the UI.
+  </Description>
+  <Signature returnType="java.lang.String">
+    <Inputs>
+      <Argument name="context" type="sailpoint.api.SailPointContext"/>
+      <Argument name="identity" type="sailpoint.object.Identity"/>
+      <Argument name="certifiable" type="sailpoint.object.Certifiable"/>
+    </Inputs>
+  </Signature>
+  <Source><![CDATA[
+    import sailpoint.object.EntitlementCertifiable;
+    import sailpoint.object.EntitlementSnapshot;
+
+    // Only EntitlementCertifiable items carry the application name we need to
+    // match on; other Certifiable subtypes (e.g. BundleCertifiable) pass
+    // through untouched, same instanceof guard as the Exclusion Rule.
+    if (!(certifiable instanceof EntitlementCertifiable)) {
+        return null;
+    }
+
+    EntitlementCertifiable ec = (EntitlementCertifiable) certifiable;
+    EntitlementSnapshot snap = ec.getEntitlements();
+
+    if (snap != null && "GL-Finance".equals(snap.getApplicationName())) {
+        return "appsec.reviewer";
+    }
+
+    return null;
+  ]]></Source>
+</Rule>

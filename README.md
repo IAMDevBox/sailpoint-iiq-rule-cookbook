@@ -1,6 +1,6 @@
 # SailPoint IdentityIQ Rule Cookbook
 
-Working BeanShell rule templates for the two IdentityIQ rule types most tutorials skip: **Provisioning rules** (reshaping what gets sent to a connector) and **Certification rules** (controlling what a reviewer sees). Extracted from the [SailPoint IdentityIQ BeanShell Rule Cookbook](https://iamdevbox.com/posts/sailpoint-identityiq-beanshell-rule-cookbook-provisioning-certification/) guide on [IAMDevBox](https://iamdevbox.com).
+Working BeanShell rule templates for the IdentityIQ rule types most tutorials skip: **Provisioning rules** (reshaping what gets sent to a connector) and **Certification rules** (controlling what a reviewer sees and who reviews it). Extracted from the [SailPoint IdentityIQ BeanShell Rule Cookbook](https://iamdevbox.com/posts/sailpoint-identityiq-beanshell-rule-cookbook-provisioning-certification/) and [Automating SailPoint IdentityIQ Certification Campaigns](https://iamdevbox.com/posts/sailpoint-identityiq-automating-certification-campaigns/) guides on [IAMDevBox](https://iamdevbox.com).
 
 For the four rule types every IdentityIQ developer writes first — BuildMap, Correlation, IdentityAttribute, and rule libraries — see the companion [sailpoint-iiq-devtools](https://github.com/IAMDevBox/sailpoint-iiq-devtools) repo and its source guide, [BeanShell Rules, Workflows, and Tasks](https://iamdevbox.com/posts/sailpoint-identityiq-beanshell-rules-workflows-tasks-developer-guide/).
 
@@ -11,7 +11,8 @@ For the four rule types every IdentityIQ developer writes first — BuildMap, Co
 | `rules/before-provisioning-disable-to-status-flag.xml` | `BeforeProvisioning` | Converts Disable/Enable operations into a Modify with a status attribute, for target systems with no native disable |
 | `rules/after-provisioning-notify-manager.xml` | `AfterProvisioning` | Emails a manager when a provisioning request against an application commits successfully |
 | `rules/certification-exclusion-disabled-and-role-justified.xml` | `CertificationExclusion` | Filters role-justified entitlements out of an access review so reviewers aren't re-approving the same access twice |
-| `scripts/diff-exclusion-impact.sh` | — | Quantifies what a `CertificationExclusion` rule actually filters, by diffing item counts between two staged certifications of the same definition |
+| `rules/certification-pre-delegation-financial-app.xml` | `CertificationPreDelegation` | Routes entitlements on a designated high-risk application to a dedicated reviewer instead of the identity's default certifier — the rule that makes automated/unattended campaigns safe for sensitive applications |
+| `scripts/diff-exclusion-impact.sh` | — | Quantifies what a `CertificationExclusion` or `CertificationPreDelegation` rule actually changed, by diffing item counts between two staged certifications of the same definition. For pre-delegation specifically, this only confirms the item set is unchanged (delegation doesn't add/remove items) — you still need to spot-check a few `CertificationEntity` owners in the UI to confirm the reassignment itself took effect, since the script counts items, not certifier identity. |
 
 ## Quick Start
 
